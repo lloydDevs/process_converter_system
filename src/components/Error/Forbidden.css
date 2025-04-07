@@ -1,0 +1,18 @@
+.forbidden-container {
+  text-align: center;
+  margin-top: 50px;
+  padding: 20px;
+  border-width: 1px 0px 1px 0px;
+  border-style: solid;
+  border-color: #ff0000;
+  background-color: #ffe6e6;
+  color: #ff0000;
+}
+
+.forbidden-container h2 {
+  font-size: 2em;
+}
+
+.forbidden-container p {
+  font-size: 1.2em;
+}
