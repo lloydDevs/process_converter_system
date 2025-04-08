@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import chedLogo from "../assets/CHED-LOGO_orig.png";
 import NavBar from "./NavBar/NavBar";
-import { Modal, Button, Form } from "react-bootstrap";
+import { Modal, Button, Form, FormControl } from "react-bootstrap";
 
 const SavedEntries = () => {
   const [loading, setLoading] = useState(true);
@@ -22,8 +23,10 @@ const SavedEntries = () => {
   const [showViewModal, setShowViewModal] = useState(false);
 
   const [showPOModal, setShowPOModal] = useState(false);
+  const navigate = useNavigate();
   const [selectedEntry, setSelectedEntry] = useState(null);
-  const [poFormData, setPoFormData] = useState({
+  const [poData, setPoData] = useState({
+    po_number: "",
     supplier: "",
     supplierAddress: "",
     supplierTIN: "",
@@ -31,8 +34,36 @@ const SavedEntries = () => {
     placeOfDelivery: "",
     dateOfDelivery: "",
     deliveryTerm: "",
-    paymentTerm: "",
+    paymentTerm: ""
   });
+
+  const handlePoDataChange = (e) => {
+    const { name, value } = e.target;
+    setPoData({
+      ...poData,
+      [name]: value
+    });
+  };
+
+  const fetchPoData = async (entryId) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/po-data?entry_id=${entryId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.length > 0) {
+          setPoData(data[0]);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching PO data:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedEntry) {
+      fetchPoData(selectedEntry.id);
+    }
+  }, [selectedEntry]);
 
   useEffect(() => {
     const fetchEntries = async (page = 1) => {
@@ -89,14 +120,6 @@ const SavedEntries = () => {
   const handleGeneratePO = (entry) => {
     setSelectedEntry(entry);
     setShowPOModal(true);
-  };
-
-  const handlePOFormChange = (e) => {
-    const { name, value } = e.target;
-    setPoFormData({
-      ...poFormData,
-      [name]: value,
-    });
   };
 
   const generatePR = (entry) => {
@@ -179,7 +202,7 @@ const SavedEntries = () => {
       });
 
       // Table Data
-      const tableData = entry.items.map((item) => [
+      const tableData = selectedEntry.items.map((item) => [
         item.stockNo || "-",
         item.unit || "-",
         item.itemDescription || "-",
@@ -247,14 +270,14 @@ const SavedEntries = () => {
       const yPos = doc.lastAutoTable.finalY;
 
       const totalCost = tableData.reduce((sum, row) => {
-        // Assuming "Total Cost" is the 5th column (index 4)
-        const cost = parseFloat(row[5]) || 0; // Convert to number, default to 0 if invalid
+        // Convert to absolute value to ensure positive number
+        const cost = Math.abs(parseFloat(row[5]) || 0);
         return sum + cost;
       }, 0);
 
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY,
-        body: [["", "", "", "", "Total:", totalCost.toFixed(2)]],
+        body: [["", "", "", "", "Total:", `₱${totalCost.toFixed(2)}`]],
         theme: "grid",
         styles: {
           fontSize: 8,
@@ -378,362 +401,427 @@ const SavedEntries = () => {
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
       setShowDeleteModal(false);
-      fetchEntries(data.pagination.page); // Refresh the data after deletion
+      fetchEntries(data.pagination.page);
     } catch (err) {
       console.error("Delete failed:", err);
+    }
+  };
+  
+  const savePoData = async () => {
+    try {
+      const response = await fetch("http://localhost:3001/api/po-data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          entry_id: selectedEntry.id,
+          ...poData,
+          items: selectedEntry.items
+        }),
+      });
+      
+      if (response.ok) {
+        generatePOPDF();
+        console.log("successful");
+      }
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("Server error:", error);
+      }
+      
+    } catch (err) {
+      console.error("Error saving PO data:", err);  
     }
   };
 
   const generatePOPDF = () => {
     if (!selectedEntry) return;
-
     const img = new Image();
     img.src = chedLogo;
 
     img.onload = () => {
       const doc = new jsPDF();
       const filename = `${selectedEntry.filename.replace(".pdf", "")}_PO.pdf`;
-
-      // Set initial position
-      let yPos = 20;
-
       // Add CHED Logo
-      doc.addImage(img, "PNG", 15, yPos, 20, 20);
-      yPos += 5;
+      doc.addImage(img, "PNG", 15, 10, 20, 20);
 
       // Header
       doc.setFontSize(14);
-      doc.text("COMMISSION ON HIGHER EDUCATION", 105, yPos, {
+      doc.text("COMMISSION ON HIGHER EDUCATION", 105, 20, {
         align: "center",
       });
-      doc.text("MIMAROPA REGION", 105, yPos + 7, { align: "center" });
-      doc.setFontSize(16);
-      doc.text("PURCHASE ORDER", 105, yPos + 20, { align: "center" });
-      yPos += 35;
+      doc.text("MIMAROPA REGION", 105, 27, { align: "center" });
 
-      // Supplier Information Table
-      autoTable(doc, {
-        startY: yPos,
-        body: [
-          [
-            {
-              content: `Supplier: ${
-                poFormData.supplier || "Manna's General Merchandise"
-              }`,
-              styles: { lineWidth: 0 },
-            },
-            {
-              content: `TIN: ${poFormData.supplierTIN || "903-369-690-00000"}`,
-              styles: { lineWidth: 0 },
-            },
-          ],
-          [
-            {
-              content: `Address: ${
-                poFormData.supplierAddress ||
-                "05 Don Buenavista Santiago City, Isabela"
-              }`,
-              styles: { lineWidth: 0 },
-            },
-            {
-              content: `R.O. No.: ${poFormData.roNumber || "2025-03-005"}`,
-              styles: { lineWidth: 0 },
-            },
-          ],
-          [
-            {
-              content: `Date: ${poFormData.date || "March 25, 2025"}`,
-              styles: { lineWidth: 0 },
-            },
-            {
-              content: `Mode of Procurement: ${
-                poFormData.modeOfProcurement ||
-                "Negotiated Procurement under Section 53.9"
-              }`,
-              styles: { lineWidth: 0 },
-            },
-          ],
-        ],
-        styles: {
-          fontSize: 10,
-          cellPadding: 1,
-          lineWidth: 0.1,
-          lineColor: [0, 0, 0],
-        },
-        columnStyles: {
-          0: { cellWidth: 95, lineWidth: 0 },
-          1: { cellWidth: 95, lineWidth: 0 },
-        },
-        tableWidth: "wrap",
-      });
+      doc.setFontSize(14);
+      doc.text("Purchase Order", 105, 40, { align: "center" });
 
-      yPos = doc.lastAutoTable.finalY + 5;
-
-      // Gentlemen section
       doc.setFontSize(10);
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.5);
-      doc.rect(15, yPos, 180, 15);
-      doc.text("Gentlemen:", 20, yPos + 5);
-      doc.text(
-        "Please furnish this Office the following articles subject to the terms and conditions contained herein:",
-        20,
-        yPos + 10
-      );
+      doc.setFont("times", "italic"); 
+      doc.text("Appendix 61", 180, 15);
 
-      yPos += 20;
+      doc.setFont("times", "normal"); 
+      doc.setFontSize(10);
 
-      // Delivery information table
-      autoTable(doc, {
-        startY: yPos,
-        body: [
-          [
-            {
-              content: `Place of Delivery: ${
-                poFormData.placeOfDelivery || "CHED Mimaropa"
-              }`,
-              styles: { lineWidth: 0 },
-            },
-            {
-              content: `Date of Delivery: ${
-                poFormData.dateOfDelivery || "______"
-              }`,
-              styles: { lineWidth: 0 },
-            },
-          ],
-          [
-            {
-              content: `Delivery Term: ${poFormData.deliveryTerm || "______"}`,
-              styles: { lineWidth: 0 },
-            },
-            {
-              content: `Payment Term: ${poFormData.paymentTerm || "______"}`,
-              styles: { lineWidth: 0 },
-            },
-          ],
+      doc.setFont("times", "normal");
+      doc.setFontSize(10);
+
+      const fundClusterY = 45;
+
+      const tableStartY = fundClusterY + 2; 
+
+      const headerData = [
+        [
+          `Supplier: ${poData.supplier || "________________"}\n` +
+          `Address: ${poData.supplierAddress || "______________"}\n` +
+          `TIN: ${poData.supplierTIN || "______________"}`,
+          `P.O. No.: ${poData.po_number || "______________"}\n` +
+          `Date: ${poData.dateOfDelivery || "______________"}\n` +
+          `Mode of Procurement: ${poData.modeOfProcurement || "_________________"}`
         ],
-        styles: {
-          fontSize: 10,
-          cellPadding: 1,
-          lineWidth: 0,
-        },
-        columnStyles: {
-          0: { cellWidth: 95, lineWidth: 0 },
-          1: { cellWidth: 95, lineWidth: 0 },
-        },
-      });
-
-      yPos = doc.lastAutoTable.finalY + 5;
-
-      // Items Table
-      const tableData = selectedEntry.items.map((item) => [
-        item.stockNo || "",
-        item.unit || "PC",
-        {
-          content: [
-            {
-              text: item.itemDescription || "Procurement of Monitor for IZN",
-              styles: { fontStyle: "bold" },
-            },
-            '\n- at least 27" Full HD IPS display or higher specification',
-            "\n- slim bezel display with at least 75Hz refresh rate",
-            "\n- matte non-reflective display",
-            "\n- design flicker free eye protection",
-          ],
-        },
-        item.quantity || "2",
-        item.unitCost ? parseFloat(item.unitCost).toFixed(2) : "8,500.00",
-        item.quantity && item.unitCost
-          ? (parseFloat(item.quantity) * parseFloat(item.unitCost)).toFixed(2)
-          : "17,000.00",
-      ]);
+      ];
 
       autoTable(doc, {
-        startY: yPos,
-        head: [
-          [
-            "Stock/Proper",
-            "Unit",
-            "Description",
-            "Quantity",
-            "Unit Cost",
-            "Amount",
-          ],
-        ],
-        body: tableData,
+        startY: tableStartY, 
+        body: headerData,
+        theme: "grid",
         styles: {
           fontSize: 8,
-          cellPadding: 3,
-          lineWidth: 0.1,
+          cellPadding: 2,
+          lineWidth: 0.1, 
           lineColor: [0, 0, 0],
         },
         headStyles: {
-          fillColor: [242, 242, 242],
-          textColor: [0, 0, 0],
+          fillColor: [255, 255, 255], 
+          textColor: [0, 0, 0], 
+          lineWidth: 0.1, 
+          lineColor: [0, 0, 0],
+        },
+        columnStyles: {
+          0: { cellWidth: 115, fontStyle: "bold" },
+          1: { cellWidth: 70 },
+        },
+      });
+      
+      const subhead = [
+        ["Gentlemen:" +"\n"+
+        " Please furnish this Office the following articles subject to the terms and conditions contained herein: "]
+      ]
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY, 
+        body: subhead,
+        theme: "grid",
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          lineWidth: 0.1, // Ensures borders are visible
+          lineColor: [0, 0, 0], // Black border color
+        },
+        headStyles: {
+          fillColor: [255, 255, 255], // White background
+          textColor: [0, 0, 0], // Black text
+          lineWidth: 0.1, // Ensures header borders are visible
+          lineColor: [0, 0, 0], // Black border color
+        },
+        columnStyles: {
+          0: { cellWidth: 185,}
+        },
+      });
+
+      const termsAndDelivery = [
+       [ `Place of Delivery: ${poData.placeOfDelivery || "__________________"}\n`+
+        `Date of Delivery:  ${poData.dateOfDelivery  || "__________________"} \n`,
+        `Delivery Term: ${poData.deliveryTerm  || "__________________"}\n` + 
+        `Payment Term: ${poData.paymentTerm  || "__________________"}\n`
+        ],
+      ];
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY, 
+        body: termsAndDelivery,
+        theme: "grid",
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          lineWidth: 0.1, // Ensures borders are visible
+          lineColor: [0, 0, 0], // Black border color
+        },
+        headStyles: {
+          fillColor: [255, 255, 255], // White background
+          textColor: [0, 0, 0], // Black text
+          lineWidth: 0.1, // Ensures header borders are visible
+          lineColor: [0, 0, 0], // Black border color
+        },
+        columnStyles: {
+          0: { cellWidth: 115,},
+          1: { cellWidth: 70,}
+        },
+      });
+
+      // Table Data
+      const tableData = selectedEntry.items.map((item) => [
+        item.stockNo || "-",
+        item.unit || "-",
+        item.itemDescription || "-",
+        item.quantity || 0,
+        item.unitCost || 0,
+        (parseFloat(item.quantity) || 0) * (parseFloat(item.unitCost) || 0),
+      ]);
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY,
+        head: [
+          [
+            "Stock/     Property No.",
+            "Unit",
+            "Item Description",
+            "Quantity",
+            "Unit Cost",
+            "Total Cost",
+          ],
+        ],
+        body: tableData,
+        theme: "grid", // Ensures grid-style table
+        styles: {
+          fontSize: 8,
+          lineWidth: 0.1, // Ensures borders are visible
+          lineColor: [0, 0, 0], // Black border color
+        },
+        headStyles: {
+          fillColor: [255, 255, 255], // White background
+          textColor: [0, 0, 0], // Black text
           fontStyle: "bold",
-          lineWidth: 0.1,
+          lineWidth: 0.1, // Ensures header borders are visible
+          lineColor: [0, 0, 0], // Black border color
           halign: "center",
         },
         columnStyles: {
-          0: { cellWidth: 20, halign: "center" },
-          1: { cellWidth: 15, halign: "center" },
-          2: { cellWidth: 70 },
+          0: { cellWidth: 15, halign: "center" },
+          1: { cellWidth: 20, halign: "center" },
+          2: { cellWidth: 80 },
           3: { cellWidth: 20, halign: "center" },
           4: { cellWidth: 25, halign: "right" },
           5: { cellWidth: 25, halign: "right" },
         },
       });
+      // Add note to the PDF
+      const yPos = doc.lastAutoTable.finalY;
 
-      yPos = doc.lastAutoTable.finalY + 5;
+      const totalCost = tableData.reduce((sum, row) => {
+        // Assuming "Total Cost" is the 5th column (index 4)
+        const cost = parseFloat(row[5]) || 0; // Convert to number, default to 0 if invalid
+        return sum + cost;
+      }, 0);
 
-      // Total Amount in Words
-      const total = tableData.reduce(
-        (sum, row) => sum + parseFloat(row[5].replace(/,/g, "") || 0),
-        0
-      );
-      const amountInWords = numberToWords(total) + " Pesos Only";
-
+      const totalInWords = numberToWords(totalCost);
       autoTable(doc, {
-        startY: yPos,
-        body: [
-          [
-            { content: "Total Amount in Words", styles: { fontStyle: "bold" } },
-            { content: amountInWords, styles: { fontStyle: "normal" } },
-          ],
-        ],
+        startY: doc.lastAutoTable.finalY,
+        body: [["(Total Amount in Words)", totalInWords, "", "Total:", `PHP ${totalCost.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]],
+        theme: "grid",
         styles: {
-          fontSize: 10,
-          cellPadding: 3,
+          fontSize: 8,
           lineWidth: 0.1,
           lineColor: [0, 0, 0],
         },
         columnStyles: {
-          0: { cellWidth: 50 },
-          1: { cellWidth: 130 },
+          0: { cellWidth: 35 },
+          1: { cellWidth: 80 },
+          2: { cellWidth: 20 },
+          3: { cellWidth: 25, fontStyle: "bold", halign: "right" },
+          4: { cellWidth: 25, halign: "right" },
         },
       });
+      const inCase = [
+        ["In case of failure to make the full delivery within the time specified above, a penalty of one-tenth (1/10) of one percent for every day of delay shall be imposed on the undelivered item/s."]
+      ]
 
-      yPos = doc.lastAutoTable.finalY + 10;
-
-      // Terms and Conforme Section
       autoTable(doc, {
-        startY: yPos,
-        body: [
-          [
-            {
-              content: [
-                "In case of failure to make the full delivery within the time specified above, a penalty of one-tenth (1/10) of one percent for every day of delay shall be imposed on the undelivered item/s.",
-                "\n\nConforme:",
-                "\n\n_________________________",
-                "\nSignature over Printed Name of Supplier",
-                "\nDate",
-              ],
-              styles: { lineWidth: 0 },
-            },
-            {
-              content: [
-                "ALDWIN C. AVES",
-                "Accountant III",
-                "Signature over Printed Name of Chief Accountant/Head of Accounting Division/Unit",
-              ],
-              styles: { lineWidth: 0, halign: "left" },
-            },
-          ],
-        ],
+        startY: doc.lastAutoTable.finalY, 
+        body: inCase,
+        theme: "grid",
         styles: {
-          fontSize: 10,
-          cellPadding: 3,
+          fontSize: 8,
+          cellPadding: 2,
+          lineWidth: 0.1,
+          lineColor: [0, 0, 0],
+        },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
           lineWidth: 0.1,
           lineColor: [0, 0, 0],
         },
         columnStyles: {
-          0: { cellWidth: 95, lineWidth: 0 },
-          1: { cellWidth: 95, lineWidth: 0 },
+          0: { cellWidth: 185 }
+        },
+        didDrawCell: function (data) {
+          // Remove bottom border
+          if (data.row.index === 0 && data.column.index === 0) {
+            const { doc, cell } = data;
+            doc.setDrawColor(255, 255, 255); // set to white to "hide" line
+            doc.setLineWidth(0);
+            doc.line(
+              cell.x,
+              cell.y + cell.height, // bottom line
+              cell.x + cell.width,
+              cell.y + cell.height
+            );
+          }
+        }
+      });
+      
+
+      const finalTerm = [
+        [
+          "Conforme: " + "\n" +
+          "\n" +
+          "           __________________________"+ "\n" +
+          "    Signature over Printed Name of Supplier"+ "\n" +
+          "           _________________________"+ "\n" +
+          "                               Date",
+          "Very truly yours, " + "\n" +
+          "\n" +
+          "                     EDNA IMELDA F. LEGAGPI"+ "\n" +
+          "    Signature over Printed Name Of Authorized Official"+ "\n" +
+          "                                 Director IV"+ "\n" +
+          "                               Designation",
+        ],
+      ];
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY,
+        body: finalTerm,
+        theme: "plain",
+        styles: {
+          fontSize: 7,
+          cellPadding: 2,
+          lineWidth: 0.1,
+          lineColor: [0, 0, 0],
+        },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+          lineWidth: 0.1,
+          lineColor: [0, 0, 0],
+        },
+        columnStyles: {
+          0: { cellWidth: 115, fontStyle: "bold" },
+          1: { cellWidth: 70 },
+        },
+        didDrawCell: function (data) {
+          // Remove top border of the first row
+          if (data.row.index === 0) {
+            const { doc, cell } = data;
+            doc.setDrawColor(255, 255, 255); // white line
+            doc.setLineWidth(0.1);
+            doc.line(cell.x, cell.y, cell.x + cell.width, cell.y); // overwrite top border
+          }
+        }
+      });
+      
+      
+
+
+      // Signatures
+      const signY = doc.lastAutoTable.finalY;
+
+      const maxLength = 30; // Adjust this based on your column width
+
+      const footer = [
+        [`Fund Cluster: _____________________\n` +
+        `Funds Available: ___________________\n` +
+        "\n" +
+        `                                   ALDWIN C. AVES\n` +
+        `                                       Accountant II\n` +
+        `   Signature over Printed Name of Chief Accountant/Head of Accounting\n` +
+        `                                       Division/Unit`,
+        `ORS/BURS No. ______________________:\n` +
+        `Date of the ORS/BURS: ______________\n` +
+        "\n" +
+        `Amount: PHP ${totalCost.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        ]
+
+      ];
+
+      autoTable(doc, {
+        startY: signY,
+        body: footer,
+        theme: "grid",
+        styles: {
+          fontSize: 8,
+          lineWidth: 0.1,
+          lineColor: [0, 0, 0],
+          halign: "left",
+        },
+        headStyles: {
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+          lineWidth: 0,
+        },
+        columnStyles: {
+          0: { cellWidth: 115, halign: "left", lineColor: [255, 255, 255] },
+          1: { cellWidth: 75, halign: "left", lineColor: [255, 255, 255] },
+        },
+        tableWidth: 185,
+        tableLineWidth: 0.1, // Outer border width
+        tableLineColor: [0, 0, 0], // Outer border color (black)
+        didParseCell: (data) => {
+          if (
+            data.column.index === 1 ||
+            (data.column.index === 2 &&
+              (data.row.index === 2 || data.row.index === 3))
+          ) {
+            data.cell.styles.halign = "center";
+          }
         },
       });
-
-      yPos = doc.lastAutoTable.finalY + 20;
-
-      // Signature Lines
-      doc.setLineWidth(0.5);
-      doc.line(15, yPos, 80, yPos);
-      doc.text("Very truly yours.", 20, yPos + 10);
-
-      yPos += 30;
-      doc.line(15, yPos, 80, yPos);
-      doc.text("EDNA IMELDA T. LEGAZPI", 20, yPos + 10);
-      doc.text(
-        "Signature over Printed Name of Authorized Official Director of Designation",
-        20,
-        yPos + 15
-      );
-
-      yPos += 30;
-      doc.text(`ORB/BURS No.: ${poFormData.orbBursNo || "______"}`, 20, yPos);
-      doc.text(
-        `Date of the ORB/BURS: ${poFormData.orbBursDate || "______"}`,
-        20,
-        yPos + 5
-      );
-      doc.text(`Amount: ${total.toFixed(2)}`, 20, yPos + 10);
-
+    
       doc.save(filename);
       setShowPOModal(false);
     };
   };
+  
 
-  // Helper function to convert numbers to words (you'll need to implement this or use a library)
+  // Helper function to convert numbers to words (supports up to millions)
   function numberToWords(num) {
-    // Implement number to words conversion or use a library
-    // This is a simplified version - you might want to use a proper library
-    const ones = [
-      "",
-      "One",
-      "Two",
-      "Three",
-      "Four",
-      "Five",
-      "Six",
-      "Seven",
-      "Eight",
-      "Nine",
-    ];
-    const teens = [
-      "Ten",
-      "Eleven",
-      "Twelve",
-      "Thirteen",
-      "Fourteen",
-      "Fifteen",
-      "Sixteen",
-      "Seventeen",
-      "Eighteen",
-      "Nineteen",
-    ];
-    const tens = [
-      "",
-      "",
-      "Twenty",
-      "Thirty",
-      "Forty",
-      "Fifty",
-      "Sixty",
-      "Seventy",
-      "Eighty",
-      "Ninety",
-    ];
-
-    if (num === 0) return "Zero";
-    if (num < 10) return ones[num];
-    if (num < 20) return teens[num - 10];
-    if (num < 100)
-      return (
-        tens[Math.floor(num / 10)] +
-        (num % 10 !== 0 ? " " + ones[num % 10] : "")
-      );
-
-    // For simplicity, this handles up to thousands - you might need more complex logic
-    return "Seventeen Thousand"; // Placeholder - implement proper conversion
+    // Ensure we're working with a positive number
+    const absNum = Math.abs(num);
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    
+    if (absNum === 0) return 'Zero Pesos Only';
+    
+    function convertLessThanOneThousand(n) {
+      if (n === 0) return '';
+      if (n < 10) return ones[n];
+      if (n < 20) return teens[n - 10];
+      if (n < 100) {
+        return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ones[n % 10] : '');
+      }
+      return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + convertLessThanOneThousand(n % 100) : '');
+    }
+    
+    let result = '';
+    const million = Math.floor(absNum / 1000000);
+    const thousand = Math.floor((absNum % 1000000) / 1000);
+    const remainder = absNum % 1000;
+    
+    if (million > 0) {
+      result += convertLessThanOneThousand(million) + ' Million';
+    }
+    if (thousand > 0) {
+      if (result !== '') result += ' ';
+      result += convertLessThanOneThousand(thousand) + ' Thousand';
+    }
+    if (remainder > 0) {
+      if (result !== '') result += ' ';
+      result += convertLessThanOneThousand(remainder);
+    }
+    
+    return result + ' Pesos Only';
   }
 
   const handlePageChange = (newPage) => {
@@ -750,7 +838,7 @@ const SavedEntries = () => {
   if (error) return <div className="container">Error: {error}</div>;
 
   return (
-    <div className="container mt-4 d-flex flex-column align-items-center">
+    <div className="container mt-1">
       <NavBar />
       {/* Success Notification */}
       {showSuccess && (
@@ -769,72 +857,125 @@ const SavedEntries = () => {
           </div>
         </div>
       )}
-      <h2 className="mb-4">Saved Entries</h2>
-      {data.entries.length === 0 ? (
-        <div className="alert alert-info">No saved entries found</div>
-      ) : (
-        <>
-          <table className="table table-striped table-hover table-bordered">
-            <thead className="thead-dark">
-              <tr>
-                <th>Filename</th>
-                <th>PR Number</th>
-                <th>Date</th>
-                <th style={{ textAlign: "left" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.entries.map((entry) => (
-                <tr key={entry.id}>
-                  <td>{entry.filename}</td>
-                  <td>{entry.prNumber || "N/A"}</td>
-                  <td>{formatDate(entry.date) || "N/A"}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      onClick={() => generatePR(entry)}
-                      className="btn btn-outline-primary btn-sm me-1"
-                    >
-                      Generate PR
-                    </button>
-                    <button
-                      onClick={() => handleGeneratePO(entry)}
-                      className="btn btn-primary btn-sm me-1"
-                    >
-                      Generate PO
-                    </button>
-                    <button
-                      onClick={() => view(entry)}
-                      className="btn btn-no-outline btn-sm"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        height="24px"
-                        viewBox="0 -960 960 960"
-                        width="24px"
-                        fill="#1f1f1f"
-                      >
-                        <path d="M480-320q75 0 127.5-52.5T660-500q0-75-52.5-127.5T480-680q-75 0-127.5 52.5T300-500q0 75 52.5 127.5T480-320Zm0-72q-45 0-76.5-31.5T372-500q0-45 31.5-76.5T480-608q45 0 76.5 31.5T588-500q0 45-31.5 76.5T480-392Zm0 192q-146 0-266-81.5T40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200Zm0-300Zm0 220q113 0 207.5-59.5T832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280Z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => setClicked(entry)}
-                      className="btn btn-no-outline btn-sm me-1"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        height="24px"
-                        viewBox="0 -960 960 960"
-                        width="24px"
-                        fill="#EA3323"
-                      >
-                        <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="card shadow-sm mb-4">
+        <div className="card-header bg-primary text-white">
+          <h3 className="mb-0">
+            <i className="bi bi-archive me-2"></i>
+            Saved Entries
+          </h3>
+        </div>
+        
+        <div className="card-body">
+          {data.entries.length === 0 ? (
+            <div className="alert alert-info text-center py-3">
+              <i className="bi bi-info-circle me-2"></i>
+              No saved entries found
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead className="table-light">
+                  <tr>
+                    <th className="w-25">Filename</th>
+                    <th className="w-20">PR Number</th>
+                    <th className="w-15">Date</th>
+                    <th className="w-40 text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.entries.map((entry) => (
+                    <tr key={entry.id}>
+                      <td className="text-truncate" style={{maxWidth: '200px'}} title={entry.filename}>
+                        {entry.filename}
+                      </td>
+                      <td>{entry.prNumber || "N/A"}</td>
+                      <td>{formatDate(entry.date) || "N/A"}</td>
+                      <td className="text-end">
+                        <div className="d-flex justify-content-end gap-2">
+                          <button
+                            onClick={() => generatePR(entry)}
+                            className="btn btn-outline-primary btn-sm"
+                            title="Generate PR"
+                          >
+                            <i className="bi bi-file-earmark-text"></i>
+                            PR
+                          </button>
+                          <button
+                            onClick={async () => {
+                              setSelectedEntry(entry);
+                              try {
+                                const response = await fetch(`http://localhost:3001/api/po-data?entry_id=${entry.id}`);
+                                if (response.ok) {
+                                  const poData = await response.json();
+                                  navigate('/po-view', { 
+                                    state: { 
+                                      entry: {
+                                        ...entry,
+                                        poData: poData.poData,
+                                        poItems: poData.poItems
+                                      }
+                                    } 
+                                  });
+                                } else {
+                                  navigate('/po-view', { state: { entry } });
+                                }
+                              } catch (err) {
+                                console.error("Error fetching PO data:", err);
+                                navigate('/po-view', { state: { entry } });
+                              }
+                            }}
+                            className="btn btn-info btn-sm"
+                            title="Show PO"
+                          >
+                            <i className="bi bi-eye"></i>
+                            PO
+                          </button>
+                          <button
+                            onClick={() => handleGeneratePO(entry)}
+                            className="btn btn-primary btn-sm"
+                            title="Generate PO"
+                          >
+                            <i className="bi bi-file-earmark-plus me-1"></i>
+                            New PO
+                          </button>
+                          <button
+                            onClick={() => view(entry)}
+                            className="btn btn-outline-secondary btn-sm"
+                            title="View Details"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              height="18px"
+                              viewBox="0 -960 960 960"
+                              width="18px"
+                              fill="#1f1f1f"
+                            >
+                              <path d="M480-320q75 0 127.5-52.5T660-500q0-75-52.5-127.5T480-680q-75 0-127.5 52.5T300-500q0 75 52.5 127.5T480-320Zm0-72q-45 0-76.5-31.5T372-500q0-45 31.5-76.5T480-608q45 0 76.5 31.5T588-500q0 45-31.5 76.5T480-392Zm0 192q-146 0-266-81.5T40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200Zm0-300Zm0 220q113 0 207.5-59.5T832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280Z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => setClicked(entry)}
+                            className="btn btn-outline-danger btn-sm"
+                            title="Delete Entry"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              height="18px"
+                              viewBox="0 -960 960 960"
+                              width="18px"
+                              fill="#EA3323"
+                            >
+                              <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* PO Generation Modal */}
           <Modal
@@ -847,13 +988,23 @@ const SavedEntries = () => {
             </Modal.Header>
             <Modal.Body>
               <Form>
+              <Form.Group className="mb-1">
+                  <Form.Label>P.O. No. :</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="po_number"
+                    value={poData.po_number}
+                    onChange={handlePoDataChange}
+                    required
+                  />
+                </Form.Group>
                 <Form.Group className="mb-1">
                   <Form.Label>Supplier Name</Form.Label>
                   <Form.Control
                     type="text"
                     name="supplier"
-                    value={poFormData.supplier}
-                    onChange={handlePOFormChange}
+                    value={poData.supplier}
+                    onChange={handlePoDataChange}
                     required
                   />
                 </Form.Group>
@@ -863,8 +1014,8 @@ const SavedEntries = () => {
                   <Form.Control
                     type="text"
                     name="supplierAddress"
-                    value={poFormData.supplierAddress}
-                    onChange={handlePOFormChange}
+                    value={poData.supplierAddress}
+                    onChange={handlePoDataChange}
                     required
                   />
                 </Form.Group>
@@ -874,28 +1025,21 @@ const SavedEntries = () => {
                   <Form.Control
                     type="text"
                     name="supplierTIN"
-                    value={poFormData.supplierTIN}
-                    onChange={handlePOFormChange}
+                    value={poData.supplierTIN}
+                    onChange={handlePoDataChange}
                     required
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-1">
                   <Form.Label>Mode of Procurement</Form.Label>
-                  <Form.Control
-                    as="select"
+                  <FormControl
+                    type="text"
                     name="modeOfProcurement"
-                    value={poFormData.modeOfProcurement}
-                    onChange={handlePOFormChange}
+                    value={poData.modeOfProcurement}
+                    onChange={handlePoDataChange}
                     required
-                  >
-                    <option value="">Select...</option>
-                    <option value="Shopping">Shopping</option>
-                    <option value="Public Bidding">Public Bidding</option>
-                    <option value="Negotiated Procurement">
-                      Negotiated Procurement
-                    </option>
-                  </Form.Control>
+                  />
                 </Form.Group>
 
                 <Form.Group className="mb-1">
@@ -903,8 +1047,8 @@ const SavedEntries = () => {
                   <Form.Control
                     type="text"
                     name="placeOfDelivery"
-                    value={poFormData.placeOfDelivery}
-                    onChange={handlePOFormChange}
+                    value={poData.placeOfDelivery}
+                    onChange={handlePoDataChange}
                     required
                   />
                 </Form.Group>
@@ -914,9 +1058,9 @@ const SavedEntries = () => {
                   <Form.Control
                     type="date"
                     name="dateOfDelivery"
-                    value={formatDate(poFormData.dateOfDelivery)}
-                    onChange={handlePOFormChange}
-                    required
+                    value={formatDate(poData.dateOfDelivery)}
+                    onChange={handlePoDataChange}
+                    
                   />
                 </Form.Group>
 
@@ -925,9 +1069,9 @@ const SavedEntries = () => {
                   <Form.Control
                     type="text"
                     name="deliveryTerm"
-                    value={poFormData.deliveryTerm}
-                    onChange={handlePOFormChange}
-                    required
+                    value={poData.deliveryTerm}
+                    onChange={handlePoDataChange}
+                    
                   />
                 </Form.Group>
 
@@ -936,9 +1080,9 @@ const SavedEntries = () => {
                   <Form.Control
                     type="text"
                     name="paymentTerm"
-                    value={poFormData.paymentTerm}
-                    onChange={handlePOFormChange}
-                    required
+                    value={poData.paymentTerm}
+                    onChange={handlePoDataChange}
+                    
                   />
                 </Form.Group>
               </Form>
@@ -947,7 +1091,14 @@ const SavedEntries = () => {
               <Button variant="secondary" onClick={() => setShowPOModal(false)}>
                 Cancel
               </Button>
-              <Button variant="primary" onClick={generatePOPDF}>
+              <Button variant="primary" onClick={async () => {
+                try {
+                  await savePoData();
+                  generatePOPDF();
+                } catch (err) {
+                  console.error("Error saving PO data:", err);
+                }
+              }}>
                 Generate PO
               </Button>
             </Modal.Footer>
@@ -1070,8 +1221,8 @@ const SavedEntries = () => {
               ))}
             </ul>
           </nav>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 };

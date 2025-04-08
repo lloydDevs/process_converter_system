@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { Routes, Route, Navigate } from "react-router-dom";
 import DataForm from "./components/DataForm";
+import POView from "./components/POView";
+import POForm from "./components/POForm";
 import ErrorBoundary from "./components/ErrorBoundary"; // Import ErrorBoundary
 import Login from "./components/Login/Login";
 import Home from "./components/Home"; // Assuming you have a Home component
@@ -69,6 +71,42 @@ function App() {
         />
         <Route path="/forbidden" element={<Forbidden />} />
         <Route path="/entries" element={<SavedEntries />} />
+        <Route 
+          path="/po-view" 
+          element={
+            isLoggedIn ? (
+              <ErrorBoundary>
+                <POView />
+              </ErrorBoundary>
+            ) : (
+              <Navigate to="/forbidden" />
+            )
+          } 
+        />
+        <Route 
+          path="/create-po" 
+          element={
+            isLoggedIn ? (
+              <ErrorBoundary>
+                <POForm />
+              </ErrorBoundary>
+            ) : (
+              <Navigate to="/forbidden" />
+            )
+          } 
+        />
+        <Route 
+          path="/edit-po" 
+          element={
+            isLoggedIn ? (
+              <ErrorBoundary>
+                <POForm />
+              </ErrorBoundary>
+            ) : (
+              <Navigate to="/forbidden" />
+            )
+          } 
+        />
       </Routes>
     </div>
   );

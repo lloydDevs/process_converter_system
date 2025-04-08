@@ -67,9 +67,44 @@ const createTables = async () => {
         stockNo VARCHAR(255),
         unit VARCHAR(255),
         itemDescription TEXT,
-        quantity DECIMAL(10,2),
-        unitCost DECIMAL(10,2),
+        quantity DECIMAL(15,2),
+        unitCost DECIMAL(15,2),
         FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create po_data table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS po_data (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        entry_id INT,
+        po_number VARCHAR(255),
+        supplier VARCHAR(255),
+        supplierAddress TEXT,
+        supplierTIN VARCHAR(255),
+        modeOfProcurement VARCHAR(255),
+        placeOfDelivery TEXT,
+        dateOfDelivery DATE,
+        deliveryTerm TEXT,
+        paymentTerm TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create po_items table (duplicate of items but for PO)
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS po_items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        entry_id INT,
+        po_data_id INT,
+        stockNo VARCHAR(255),
+        unit VARCHAR(255),
+        itemDescription TEXT,
+        quantity DECIMAL(15,2),
+        unitCost DECIMAL(15,2),
+        FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE,
+        FOREIGN KEY (po_data_id) REFERENCES po_data(id) ON DELETE CASCADE
       )
     `);
 
@@ -98,6 +133,111 @@ const initializeDatabase = async () => {
 initializeDatabase();
 
 // POST endpoint to save data
+// New endpoint to save PO data
+// GET endpoint to retrieve PO data
+app.get("/api/po-data", async (req, res, next) => {
+  let conn;
+  try {
+    const entryId = req.query.entry_id;
+    conn = await pool.getConnection();
+
+    // Get PO data
+    const [poData] = await conn.query(
+      `SELECT * FROM po_data WHERE entry_id = ?`,
+      [entryId]
+    );
+
+    // Return empty PO structure if no data exists
+    if (poData.length === 0) {
+      return res.status(200).json({
+        poData: {
+          po_number: "",
+          supplier: "",
+          supplierAddress: "",
+          supplierTIN: "",
+          modeOfProcurement: "",
+          placeOfDelivery: "",
+          dateOfDelivery: "",
+          deliveryTerm: "",
+          paymentTerm: "",
+        },
+        poItems: [],
+      });
+    }
+
+    // Get PO items
+    const [poItems] = await conn.query(
+      `SELECT * FROM po_items WHERE entry_id = ?`,
+      [entryId]
+    );
+
+    res.status(200).json({
+      poData: poData[0],
+      poItems: poItems || [],
+    });
+  } catch (err) {
+    next(err);
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post("/api/po-data", async (req, res, next) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    const [poResult] = await conn.query(
+      `INSERT INTO po_data 
+      (entry_id, po_number, supplier, supplierAddress, supplierTIN, 
+       modeOfProcurement, placeOfDelivery, dateOfDelivery, deliveryTerm, paymentTerm)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.body.entry_id,
+        req.body.po_number,
+        req.body.supplier,
+        req.body.supplierAddress,
+        req.body.supplierTIN,
+        req.body.modeOfProcurement,
+        req.body.placeOfDelivery,
+        new Date(req.body.dateOfDelivery),
+        req.body.deliveryTerm,
+        req.body.paymentTerm,
+      ]
+    );
+
+    // Insert PO items
+    for (const item of req.body.items) {
+      await conn.query(
+        `INSERT INTO po_items 
+        (entry_id, po_data_id, stockNo, unit, itemDescription, quantity, unitCost)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          req.body.entry_id,
+          poResult.insertId,
+          item.stockNo,
+          item.unit,
+          item.itemDescription,
+          item.quantity,
+          item.unitCost,
+        ]
+      );
+    }
+
+    await conn.commit();
+    res.status(201).json({
+      message: "PO data created successfully",
+      id: poResult.insertId,
+    });
+  } catch (err) {
+    if (conn) await conn.rollback();
+    next(err);
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.post("/api/entries", async (req, res, next) => {
   let conn;
   try {
@@ -226,7 +366,7 @@ app.delete("/api/entries/:id", async (req, res, next) => {
 
     conn = await pool.getConnection();
     await conn.beginTransaction();
-    
+
     // Delete the entry (items will be deleted automatically due to ON DELETE CASCADE)
     const [result] = await conn.query("DELETE FROM entries WHERE id = ?", [
       entryId,
