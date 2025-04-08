@@ -5,7 +5,7 @@ import "./NavBar.css"; // Assuming we will create a CSS file for styling
 
 const NavBar = () => {
   return (
-    <nav className="navbar">
+    <nav className="navbar bg-primary">
       <ul>
         <li>
           <Link to="/home">Home</Link>

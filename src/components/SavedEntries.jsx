@@ -840,7 +840,6 @@ const SavedEntries = () => {
   return (
     <div className="container mt-1">
       <NavBar />
-      {/* Success Notification */}
       {showSuccess && (
         <div
           className="alert alert-success position-fixed top-0 end-0 m-3"
@@ -898,7 +897,7 @@ const SavedEntries = () => {
                             title="Generate PR"
                           >
                             <i className="bi bi-file-earmark-text"></i>
-                            PR
+                            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#000000"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
                           </button>
                           <button
                             onClick={async () => {
@@ -924,19 +923,20 @@ const SavedEntries = () => {
                                 navigate('/po-view', { state: { entry } });
                               }
                             }}
-                            className="btn btn-info btn-sm"
+                            className="btn btn-outline-info btn-sm"
                             title="Show PO"
                           >
                             <i className="bi bi-eye"></i>
-                            PO
+                            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#0000F5"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>
                           </button>
                           <button
                             onClick={() => handleGeneratePO(entry)}
                             className="btn btn-primary btn-sm"
                             title="Generate PO"
                           >
-                            <i className="bi bi-file-earmark-plus me-1"></i>
-                            New PO
+                            <i className="bi bi-file-earmark-plus"></i>
+                            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#FFFFFF"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
+                            
                           </button>
                           <button
                             onClick={() => view(entry)}

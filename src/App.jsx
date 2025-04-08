@@ -38,9 +38,6 @@ function App() {
 
   return (
     <div className="App">
-      <div>
-        <img src={ChedLogo} alt="no logo" style={logoStyle} />
-      </div>
       <Routes>
         <Route
           path="/"

@@ -6,7 +6,6 @@ import cors from "cors";
 const app = express();
 const port = 3001;
 
-// Database configuration with connection pooling
 const pool = mysql.createPool({
   host: "localhost",
   user: "root",
@@ -17,7 +16,6 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-// Middleware
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -27,7 +25,6 @@ app.use(
 );
 app.use(bodyParser.json());
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: "Something went wrong!" });
@@ -132,9 +129,6 @@ const initializeDatabase = async () => {
 
 initializeDatabase();
 
-// POST endpoint to save data
-// New endpoint to save PO data
-// GET endpoint to retrieve PO data
 app.get("/api/po-data", async (req, res, next) => {
   let conn;
   try {
