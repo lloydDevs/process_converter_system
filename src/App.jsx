@@ -11,6 +11,8 @@ import Forbidden from "./components/Error/Forbidden";
 import ChedLogo from "./assets/CHED-LOGO_orig.png";
 import SavedEntries from "./components/SavedEntries";
 
+
+
 console.log("App component is rendering"); // Log when the App component renders
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(""); // State to manage login status

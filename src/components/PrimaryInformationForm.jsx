@@ -146,6 +146,7 @@ const PrimaryInformationForm = ({ formData, handleChange }) => {
               name="prNumber"
               value={formData.prNumber}
               onChange={handleChange}
+              readOnly
               className="form-control"
             />
           </div>

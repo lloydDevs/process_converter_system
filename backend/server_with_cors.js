@@ -18,9 +18,14 @@ const pool = mysql.createPool({
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: [
+      "http://localhost:3001",
+      "http://192.168.1.39:5173",
+      "http://192.168.56.1:5173",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type"],
+    credentials: true,
   })
 );
 app.use(bodyParser.json());
@@ -123,7 +128,10 @@ const initializeDatabase = async () => {
     await createTables();
   } catch (err) {
     console.error("Database initialization error:", err);
-    process.exit(1);
+    console.log(
+      "Server will continue running in limited mode without database access"
+    );
+    // Don't exit process to allow server to run with mock data
   }
 };
 
@@ -285,6 +293,51 @@ app.post("/api/entries", async (req, res, next) => {
   } catch (err) {
     if (conn) await conn.rollback();
     next(err); // Pass errors to error handling middleware
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// Get PO data count
+app.get("/api/po-data/latest-count", async (req, res, next) => {
+  console.log("PO count endpoint hit");
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    // Get total count of all PO entries
+    const [result] = await conn.query(`
+      SELECT COUNT(*) as count 
+      FROM po_data
+    `);
+
+    res.status(200).json({
+      count: result[0].count || 0,
+    });
+  } catch (err) {
+    next(err);
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// Get the latest PR number count
+app.get("/api/entries/latest-count", async (req, res, next) => {
+  console.log("Latest count endpoint hit");
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    const [result] = await conn.query(`
+      SELECT COUNT(*) as count 
+      FROM entries
+    `);
+
+    res.status(200).json({
+      count: result[0].count || 0,
+    });
+  } catch (err) {
+    next(err);
   } finally {
     if (conn) conn.release();
   }

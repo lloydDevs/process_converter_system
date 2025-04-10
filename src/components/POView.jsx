@@ -3,6 +3,7 @@ import { Button, Table, Spinner, Alert } from "react-bootstrap";
 import { useNavigate, useLocation } from "react-router-dom";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import config from '../config';
 
 const POView = () => {
   const location = useLocation();
@@ -22,7 +23,7 @@ const POView = () => {
 
       try {
         const response = await fetch(
-          `http://localhost:3001/api/po-data?entry_id=${entry.id}`
+          `${config.API_BASE_URL}/api/po-data?entry_id=${entry.id}`
         );
         
         if (!response.ok) {
@@ -322,7 +323,6 @@ const POView = () => {
           lineWidth: 0.1,
           lineColor: [0, 0, 0],
           halign: "center",
-          cellWidth: 185,
         },
         columnStyles: {
           0: { cellWidth: 15, halign: "center" },

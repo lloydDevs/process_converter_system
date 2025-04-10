@@ -14,4 +14,8 @@ export default defineConfig({
     // Define global variables for `Buffer` and `process`
     global: "globalThis",
   },
+  server: {
+    host: "0.0.0.0",
+    port: 5173,
+  },
 });

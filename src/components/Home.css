@@ -1,24 +1,135 @@
+/* Home Page Styles */
 .home-container {
+  max-width: 500px;
+  margin: 3rem auto;
+  padding: 2rem;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.home-header {
   text-align: center;
-  margin: 2em 0;
+  margin-bottom: 2.5rem;
 }
 
-.home-container h2 {
-  margin-bottom: 1.5em;
+.system-title {
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
 }
 
-.home-container button {
-  margin: 0.5em;
-  padding: 0.5em 1em;
-  font-size: 1em;
+.welcome-message {
+  color: #7f8c8d;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Date/Time Container Styles */
+.datetime-container {
+  margin: 1.5rem 0;
+}
+
+.datetime-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e9ecef;
+}
+
+.datetime-label {
+  color: #6c757d;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.datetime-value {
+  color: #495057;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: "Courier New", monospace;
+  position: relative;
+  overflow: hidden;
+  min-height: 1.5rem;
+}
+
+/* Button Styles */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.btn-home {
+  padding: 0.4rem 1.2rem;
+  border-radius: 8px;
+  width: 100%;
+  font-weight: 500;
+  font-size: 1rem;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  transition: all 0.3s ease;
   cursor: pointer;
-  background-color: #4CAF50; /* Green */
+}
+
+.primary-action {
+  background: #3498db;
   color: white;
   border: none;
-  border-radius: 5px;
-  transition: background-color 0.3s;
 }
 
-.home-container button:hover {
-  background-color: #45a049; /* Darker green */
+.primary-action:hover {
+  background: #2980b9;
+}
+
+.secondary-action {
+  background: white;
+  color: #3498db;
+  border: 2px solid #3498db;
+}
+
+.secondary-action:hover {
+  background: #f8f9fa;
+}
+
+.logout-action {
+  background: white;
+  color: #474747;
+  border: none;
+}
+
+.counts-container {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.logout-action:hover {
+  background: #fef0f0;
+}
+
+.btn-icon {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.spinner-border {
+  width: 1.2rem;
+  height: 1.2rem;
+  border-width: 0.15em;
+}
+
+@media (max-width: 576px) {
+  .home-container {
+    margin: 1.5rem;
+    padding: 1.5rem;
+  }
 }

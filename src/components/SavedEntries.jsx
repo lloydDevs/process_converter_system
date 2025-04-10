@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import config from '../config';
 import { useNavigate } from "react-router-dom";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -25,6 +26,7 @@ const SavedEntries = () => {
   const [showPOModal, setShowPOModal] = useState(false);
   const navigate = useNavigate();
   const [selectedEntry, setSelectedEntry] = useState(null);
+  const [isGeneratingPoNumber, setIsGeneratingPoNumber] = useState(false);
   const [poData, setPoData] = useState({
     po_number: "",
     supplier: "",
@@ -37,6 +39,38 @@ const SavedEntries = () => {
     paymentTerm: ""
   });
 
+  const generatePoNumber = async () => {
+    if (poData.po_number) return; // Skip if PO number already exists
+    
+    setIsGeneratingPoNumber(true);
+    try {
+      const response = await fetch(`${config.API_BASE_URL}/api/po-data/latest-count`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      
+      // Generate PO number in format YYYY-MM-XXX
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const count = (data.count || 0) + 1;
+      const poNumber = `${year}-${month}-${String(count).padStart(3, '0')}`;
+      
+      setPoData(prev => ({ ...prev, po_number: poNumber }));
+    } catch (err) {
+      console.error("Error generating PO number:", err);
+    } finally {
+      setIsGeneratingPoNumber(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showPOModal && !poData.po_number) {
+      generatePoNumber();
+    }
+  }, [showPOModal]);
+
   const handlePoDataChange = (e) => {
     const { name, value } = e.target;
     setPoData({
@@ -47,7 +81,7 @@ const SavedEntries = () => {
 
   const fetchPoData = async (entryId) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/po-data?entry_id=${entryId}`);
+      const response = await fetch(`${config.API_BASE_URL}/api/po-data?entry_id=${entryId}`);
       if (response.ok) {
         const data = await response.json();
         if (data.length > 0) {
@@ -69,8 +103,8 @@ const SavedEntries = () => {
     const fetchEntries = async (page = 1) => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `http://localhost:3001/api/entries?page=${page}`
+      const response = await fetch(
+          `${config.API_BASE_URL}/api/entries?page=${page}`
         );
 
         if (!response.ok) {
@@ -96,7 +130,7 @@ const SavedEntries = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:3001/api/entries?page=${page}`
+        `${config.API_BASE_URL}/api/entries?page=${page}`
       );
 
       if (!response.ok) {
@@ -162,7 +196,7 @@ const SavedEntries = () => {
         fundClusterY
       );
 
-      // Adjust the Y position for the table
+      // Adjust the Y position for the table  
       const tableStartY = fundClusterY + 2; // Add extra space after "Fund Cluster"
 
       const headerData = [
@@ -173,7 +207,7 @@ const SavedEntries = () => {
             "\n" +
             "Responsibility Center Code: " +
             (entry.responsibilityCode || "________________"),
-          "Date: " + (entry.date || "________________") + "\n",
+          "Date: " + (formatDate(entry.date) || "________________") + "\n",
         ],
       ];
 
@@ -277,7 +311,7 @@ const SavedEntries = () => {
 
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY,
-        body: [["", "", "", "", "Total:", `₱${totalCost.toFixed(2)}`]],
+        body: [["", "", "", "", "Total:", `${totalCost.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]],
         theme: "grid",
         styles: {
           fontSize: 8,
@@ -325,9 +359,9 @@ const SavedEntries = () => {
         ["Requested by:", "", "Approved by:"],
         ["Signature: ", "", ""],
         [
-          "Requested by: ",
-          ` ${entry.requestedBy || ""}`,
-          `${entry.approvedBy ?? ""}`,
+          "Printed name: ",
+          ` ${entry.requestedBy.toUpperCase() || ""}`,
+          `${entry.approvedBy.toUpperCase() ?? ""}`,
         ],
         [
           "Designation: ",
@@ -390,7 +424,7 @@ const SavedEntries = () => {
   const handleDelete = async (entry) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/entries/${entry.id}`,
+        `${config.API_BASE_URL}/api/entries/${entry.id}`,
         {
           method: "DELETE",
         }
@@ -409,7 +443,7 @@ const SavedEntries = () => {
   
   const savePoData = async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/po-data", {
+      const response = await fetch(`${config.API_BASE_URL}/api/po-data`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -903,7 +937,7 @@ const SavedEntries = () => {
                             onClick={async () => {
                               setSelectedEntry(entry);
                               try {
-                                const response = await fetch(`http://localhost:3001/api/po-data?entry_id=${entry.id}`);
+                                const response = await fetch(`${config.API_BASE_URL}/api/po-data?entry_id=${entry.id}`);
                                 if (response.ok) {
                                   const poData = await response.json();
                                   navigate('/po-view', { 
@@ -988,7 +1022,7 @@ const SavedEntries = () => {
             </Modal.Header>
             <Modal.Body>
               <Form>
-              <Form.Group className="mb-1">
+                <Form.Group className="mb-1">
                   <Form.Label>P.O. No. :</Form.Label>
                   <Form.Control
                     type="text"
@@ -996,7 +1030,10 @@ const SavedEntries = () => {
                     value={poData.po_number}
                     onChange={handlePoDataChange}
                     required
+                    readOnly
+                    disabled={isGeneratingPoNumber}
                   />
+                  {isGeneratingPoNumber && <small className="text-muted">Generating PO number...</small>}
                 </Form.Group>
                 <Form.Group className="mb-1">
                   <Form.Label>Supplier Name</Form.Label>
