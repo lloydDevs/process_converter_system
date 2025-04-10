@@ -20,7 +20,7 @@ const Forbidden = () => {
         trigger="in"
         state= "in-reveal"
         colors="primary:#c71f16,secondary:#c71f16"
-        style={{ width: '200px', height: '200px' }}
+        style={{ width: '150px', height: '150px' }}
       ></lord-icon>
       </div>
 

@@ -69,7 +69,15 @@ function App() {
           }
         />
         <Route path="/forbidden" element={<Forbidden />} />
-        <Route path="/entries" element={<SavedEntries />} />
+        <Route path="/entries" element={
+          isLoggedIn ? (
+            <ErrorBoundary>
+              <SavedEntries/>
+            </ErrorBoundary>
+          ) : (
+            <Navigate to="/forbidden" />
+          )
+        } />
         <Route 
           path="/po-view" 
           element={

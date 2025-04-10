@@ -32,7 +32,7 @@ const Home = ({ onLogout }) => {
           type: 'prCount',
           urls: [
             `${import.meta.env.VITE_API_BASE_URL || ''}/api/entries/latest-count`,
-            `http://localhost:3001/api/entries/latest-count`
+            `http://localhost:3001/api/entries/latest-count`,
           ]
         },
         {
