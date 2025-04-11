@@ -7,6 +7,8 @@ import autoTable from "jspdf-autotable";
 import chedLogo from "../assets/CHED-LOGO_orig.png";
 import NavBar from "./NavBar/NavBar";
 import config from "../config";
+import { defineElement } from 'lord-icon-element';
+import lottie from 'lottie-web';
 
 const DataForm = () => {
   const [exportFormat, setExportFormat] = useState("pdf");
@@ -40,26 +42,26 @@ const DataForm = () => {
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
-      
+
       // Try configured endpoints with timeout
       const endpoints = [
         `${config.API_BASE_URL}/api/entries/latest-count`,
         `http://localhost:3001/api/entries/latest-count`
       ].filter(url => url && !url.includes('undefined'));
-      
+
       let response;
       if (endpoints.length > 0) {
         for (const endpoint of endpoints) {
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 2000);
-            
-            response = await fetch(endpoint, { 
+
+            response = await fetch(endpoint, {
               signal: controller.signal,
               headers: { 'Content-Type': 'application/json' }
             });
             clearTimeout(timeoutId);
-            
+
             if (response.ok) {
               console.debug('Successfully connected to PR count API at', endpoint);
               const data = await response.json();
@@ -87,84 +89,84 @@ const DataForm = () => {
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       // Emergency fallback (001-050)
-      return `${year}-${month}-${String(Math.floor(Math.random() * 50) + 1).padStart(3, '0')}`; 
+      return `${year}-${month}-${String(Math.floor(Math.random() * 50) + 1).padStart(3, '0')}`;
     }
   }
- // Set initial PR number
- useEffect(() => {
-  const setPRNumber = async () => {
-    const prNumber = await generatePRNumber();
-    setFormData(prev => ({ ...prev, prNumber }));
-  };
-  setPRNumber();
-}, []);
+  // Set initial PR number
+  useEffect(() => {
+    const setPRNumber = async () => {
+      const prNumber = await generatePRNumber();
+      setFormData(prev => ({ ...prev, prNumber }));
+    };
+    setPRNumber();
+  }, []);
 
-const handleChange = useCallback((e) => {
-  const { name, value } = e.target;
-  setFormData(prev => ({ ...prev, [name]: value }));
-}, []);
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }, []);
 
-const addItem = useCallback(() => {
-  setFormData(prev => ({
-    ...prev,
-    items: [
-      ...prev.items,
-      {
-        stockNo: "",
-        unit: "",
-        itemDescription: "",
-        quantity: "",
-        unitCost: "",
-      },
-    ],
-  }));
-}, []);
+  const addItem = useCallback(() => {
+    setFormData(prev => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        {
+          stockNo: "",
+          unit: "",
+          itemDescription: "",
+          quantity: "",
+          unitCost: "",
+        },
+      ],
+    }));
+  }, []);
 
-const removeItem = useCallback((index) => {
-  setFormData(prev => ({
-    ...prev,
-    items: prev.items.filter((_, i) => i !== index)
-  }));
-}, []);
+  const removeItem = useCallback((index) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }));
+  }, []);
 
-const handleItemChange = useCallback((index, e) => {
-  const { name, value } = e.target;
-  setFormData(prev => {
-    const newItems = [...prev.items];
-    newItems[index][name] = value;
-    return { ...prev, items: newItems };
-  });
-}, []);
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    const entryResponse = await fetch("http://192.168.56.1:3001/api/entries", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(formData),
+  const handleItemChange = useCallback((index, e) => {
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const newItems = [...prev.items];
+      newItems[index][name] = value;
+      return { ...prev, items: newItems };
     });
+  }, []);
 
-    if (entryResponse.ok) {
-      const entryData = await entryResponse.json();
-      console.log("Entry created successfully:", entryData);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
-    } else {
-      console.error("Error creating entry:", entryResponse.statusText);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const entryResponse = await fetch("http://192.168.56.1:3001/api/entries", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (entryResponse.ok) {
+        const entryData = await entryResponse.json();
+        console.log("Entry created successfully:", entryData);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      } else {
+        console.error("Error creating entry:", entryResponse.statusText);
+      }
+    } catch (err) {
+      console.error("Error in form submission:", err);
     }
-  } catch (err) {
-    console.error("Error in form submission:", err);
-  }
 
-  if (exportFormat === "pdf") {
-    generatePR(formData)
-  }
-};
+    if (exportFormat === "pdf") {
+      generatePR(formData)
+    }
+  };
 
-const generatePR = (entry) => {
+  const generatePR = (entry) => {
     const img = new Image();
     img.src = chedLogo;
 
@@ -211,14 +213,14 @@ const generatePR = (entry) => {
         [
           "Office/Section:" + "\n" + entry.officeSection || "________________",
           "PR No.: " +
-            (entry.prNumber || "AUTO-GENERATED") +
-            "\n" +
-            "Responsibility Center Code: " +
-            (entry.responsibilityCode || "________________"),
+          (entry.prNumber || "AUTO-GENERATED") +
+          "\n" +
+          "Responsibility Center Code: " +
+          (entry.responsibilityCode || "________________"),
           "Date: " + (entry.date || "________________") + "\n",
         ],
       ];
-    
+
 
       autoTable(doc, {
         startY: tableStartY, // Set table Y position after "Fund Cluster"
@@ -420,44 +422,68 @@ const generatePR = (entry) => {
     };
   };
 
-return (
-  <div className="container">
-    <NavBar />
-    {showSuccess && (
-      <div className="alert alert-success position-fixed top-0 end-0 m-3" style={{ zIndex: 1000 }}>
-        <div className="d-flex align-items-center">
-          <i className="bi bi-check-circle-fill me-2"></i>
-          <span>Form successfully saved to database!</span>
+  return (
+    <div className="container">
+      <NavBar />
+      {showSuccess && (
+        <div className="alert alert-success border-success position-fixed appear-mid m-3" style={{ zIndex: 1000 }}>
+          <div className="d-flex flex-column align-items-center md">
+            <i className="bi bi-check-circle-fill me-2"></i>
+
+            <lord-icon
+              src="https://cdn.lordicon.com/fjvfsqea.json"
+              trigger="in"
+              state= "in-reveal"
+              colors="primary:black,secondary:green"
+              style={{ width: '150px', height: '150px' }}
+            ></lord-icon>
+
+            <br />
+            <div>
+              <h4 className="saved">Saved 
+                <span className="check-ico ms-2">  
+                  <lord-icon
+                  src=" https://cdn.lordicon.com/hrtsficn.json"
+                  trigger="in"
+                  state= "in-reveal"
+                  colors="primary:green"
+                  style={{ width: '20px', height: '20px' }}
+                ></lord-icon>
+                </span>
+              </h4>
+            </div>
+            <a className="visually-hidden" href="https://lordicon.com/">Icons by Lordicon.com</a>
+          </div>
         </div>
-      </div>
-    )}
-    <form onSubmit={handleSubmit} className="container mt-2 p-1">
-      <h2 className="text-center mb-4">Purchase Requisition Form</h2>
-      <PrimaryInformationForm formData={formData} handleChange={handleChange} />
-      <hr />
-      <h4 className="mt-2">Item Details ({formData.items.length})</h4>
-      <ItemDetails
-        formData={formData}
-        handleItemChange={handleItemChange}
-        removeItem={removeItem}
-        addItem={addItem}
-      />
-      <div className="d-flex gap-2 mt-3">
-        <select
-          className="form-select w-25"
-          value={exportFormat}
-          onChange={(e) => setExportFormat(e.target.value)}
-        >
-          <option value="pdf">PDF (.pdf)</option>
-        </select>
-        <button type="submit" className="btn btn-primary">
-          Generate PR
-        </button>
-      </div>
-    </form>
-  </div>
-);};
+
+      )}
+      <form onSubmit={handleSubmit} className="container mt-2 p-1">
+        <h2 className="text-center mb-4">Purchase Requisition Form</h2>
+        <PrimaryInformationForm formData={formData} handleChange={handleChange} />
+        <hr />
+        <h4 className="mt-2">Item Details ({formData.items.length})</h4>
+        <ItemDetails
+          formData={formData}
+          handleItemChange={handleItemChange}
+          removeItem={removeItem}
+          addItem={addItem}
+        />
+        <div className="d-flex gap-2 mt-3">
+          <select
+            className="form-select w-25"
+            value={exportFormat}
+            onChange={(e) => setExportFormat(e.target.value)}
+          >
+            <option value="pdf">PDF (.pdf)</option>
+          </select>
+          <button type="submit" className="btn btn-primary">
+            Generate PR
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
 
 export default DataForm;
 
- 
