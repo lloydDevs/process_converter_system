@@ -126,6 +126,7 @@ const SavedEntries = () => {
 
     fetchEntries();
   }, []);
+
   const fetchEntries = async (page = 1) => {
     try {
       setLoading(true);
@@ -177,17 +178,16 @@ const SavedEntries = () => {
       doc.text("Purchase Request", 105, 40, { align: "center" });
 
       doc.setFontSize(10);
-      doc.setFont("times", "italic"); // Set italic font
+      doc.setFont("times", "italic"); 
       doc.text("Appendix 60", 180, 15);
 
-      doc.setFont("times", "normal"); // Reset font to normal
+      doc.setFont("times", "normal"); 
       doc.setFontSize(10);
 
       doc.setFont("times", "normal");
       doc.setFontSize(10);
 
-      // Adjust the Y position for spacing
-      const fundClusterY = 55; // Move Fund Cluster text lower
+      const fundClusterY = 55; r
       doc.text(
         entry.fundCluster
           ? "Fund Cluster: " + entry.fundCluster
@@ -197,7 +197,7 @@ const SavedEntries = () => {
       );
 
       // Adjust the Y position for the table  
-      const tableStartY = fundClusterY + 2; // Add extra space after "Fund Cluster"
+      const tableStartY = fundClusterY + 2; 
 
       const headerData = [
         [
@@ -300,7 +300,7 @@ const SavedEntries = () => {
           5: { cellWidth: 25, halign: "right" },
         },
       });
-      // Add note to the PDF
+
       const yPos = doc.lastAutoTable.finalY;
 
       const totalCost = tableData.reduce((sum, row) => {
@@ -754,14 +754,11 @@ const SavedEntries = () => {
           }
         }
       });
-      
-      
-
 
       // Signatures
       const signY = doc.lastAutoTable.finalY;
 
-      const maxLength = 30; // Adjust this based on your column width
+      const maxLength = 30; 
 
       const footer = [
         [`Fund Cluster: _____________________\n` +
@@ -820,7 +817,7 @@ const SavedEntries = () => {
 
   // Helper function to convert numbers to words (supports up to millions)
   function numberToWords(num) {
-    // Ensure we're working with a positive number
+    
     const absNum = Math.abs(num);
     const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
     const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];

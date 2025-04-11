@@ -4,18 +4,15 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import DataForm from "./components/DataForm";
 import POView from "./components/POView";
 import POForm from "./components/POForm";
-import ErrorBoundary from "./components/ErrorBoundary"; // Import ErrorBoundary
+import ErrorBoundary from "./components/ErrorBoundary"; 
 import Login from "./components/Login/Login";
-import Home from "./components/Home"; // Assuming you have a Home component
+import Home from "./components/Home"; 
 import Forbidden from "./components/Error/Forbidden";
-import ChedLogo from "./assets/CHED-LOGO_orig.png";
 import SavedEntries from "./components/SavedEntries";
+import NotFound from "./components/Error/PageNotFound"
 
-
-
-console.log("App component is rendering"); // Log when the App component renders
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(""); // State to manage login status
+  const [isLoggedIn, setIsLoggedIn] = useState(""); 
 
   useEffect(() => {
     const cookie = Cookies.get("auth");
@@ -26,16 +23,9 @@ function App() {
     }
   }, []);
 
-  console.log("Login status:", isLoggedIn); // Log the login status
   const handleLogout = () => {
     setIsLoggedIn(false);
-    Cookies.remove("auth"); // Remove the cookie on logout
-  };
-
-  const logoStyle = {
-    width: "70px",
-    height: "70px",
-    margin: "10px",
+    Cookies.remove("auth"); 
   };
 
   return (
@@ -46,6 +36,7 @@ function App() {
           element={<Login setIsLoggedIn={setIsLoggedIn} />}
           onEnter={() => console.log("Navigating to Login")}
         />
+
         <Route
           path="/home"
           element={
@@ -56,6 +47,7 @@ function App() {
             )
           }
         />
+
         <Route
           path="generate-pr/data-form"
           element={
@@ -68,7 +60,9 @@ function App() {
             )
           }
         />
+
         <Route path="/forbidden" element={<Forbidden />} />
+
         <Route path="/entries" element={
           isLoggedIn ? (
             <ErrorBoundary>
@@ -78,6 +72,7 @@ function App() {
             <Navigate to="/forbidden" />
           )
         } />
+
         <Route 
           path="/po-view" 
           element={
@@ -90,6 +85,7 @@ function App() {
             )
           } 
         />
+
         <Route 
           path="/create-po" 
           element={
@@ -102,6 +98,7 @@ function App() {
             )
           } 
         />
+
         <Route 
           path="/edit-po" 
           element={
@@ -114,6 +111,7 @@ function App() {
             )
           } 
         />
+         <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
   );

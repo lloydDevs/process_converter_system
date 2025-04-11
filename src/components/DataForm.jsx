@@ -36,14 +36,13 @@ const DataForm = () => {
       },
     ],
   });
-  // Generate PR number in YYYY-MM-XXX format
+
   const generatePRNumber = async () => {
     try {
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
 
-      // Try configured endpoints with timeout
       const endpoints = [
         `${config.API_BASE_URL}/api/entries/latest-count`,
         `http://localhost:3001/api/entries/latest-count`
@@ -65,7 +64,6 @@ const DataForm = () => {
             if (response.ok) {
               console.debug('Successfully connected to PR count API at', endpoint);
               const data = await response.json();
-              // Ensure count is a number and increment by 1
               const nextCount = (parseInt(data.count) || 0) + 1;
               return `${year}-${month}-${String(nextCount).padStart(3, '0')}`;
             }
@@ -441,7 +439,7 @@ const DataForm = () => {
             <br />
             <div>
               <h4 className="saved">Saved 
-                <span className="check-ico ms-2">  
+                <span className="check-ico">  
                   <lord-icon
                   src=" https://cdn.lordicon.com/hrtsficn.json"
                   trigger="in"
