@@ -1144,7 +1144,7 @@ const SavedEntries = () => {
           <Modal
             show={showViewModal}
             onHide={() => setShowViewModal(false)}
-            size="md"
+            size="lg"
           >
             <Modal.Header closeButton>
               <Modal.Title>Entry Details</Modal.Title>
