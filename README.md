@@ -26,7 +26,15 @@ If the cursor focused on the button, it will show teh action it will perform or 
 
 This will show the form for generating PR. To add items, just hover to the last item and you will see that plus icon and it will add a new row for items. If the item is greater than or equal to 2 it will show also a "x" icon which indicate that you can remove the item if you want.
 
+#### AUTOMATIC PR NUMBER GENERATION
+
+The PR number is automatically generated based on the generated PR saved on the database. It will count the previous entries.
+The format of the PR number is "YYYY-MM-PR_COUNT". The year and month will be the current timestamp.
+
 ### ADD PO
+
+The PO number is automatically generated based on the generated PR saved on the database. It will count the previous entries.
+The format of the PR number is "YYYY-MM-PO_COUNT". The year and month will be the current timestamp.
 
 Add PO can be found on the "Saved Entries" Page. It can be the second and the third button.
 
