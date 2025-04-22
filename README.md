@@ -1,5 +1,7 @@
 # PR TO PO CONVERTER SYSTEM
 
+This system is made from react as a client and Exress js and Node js as a server
+
 ## FEATURES
 
 ### HOME
@@ -21,10 +23,14 @@ The fifth button is for deleting the PR of choice.
 
 ### ADD PR
 
+This will show the form for generating PR. To add items, just hover to the last item and you will see that plus icon and it will add a new row for items. If the item is greater than or equal to 2 it will show also a "x" icon which indicate that you can remove the item if you want.
+
 ### ADD PO
+
+Add PO can be found on the "Saved Entries" Page. It can be the second and the third button.
 
 ## LIMITATIONS
 
-Autentication is just a generic email and password that is define in the front end. Forbidded page will pop up if you refresh the page but if you are not authenticated you will be redirect in the authentication page and if authenticated, you will be in the same page. The IAR is not yet implemented.
+Autentication is just a generic email and password that is define in the front end. Forbidded page will pop up if you refresh the page but if you are not authenticated you will be redirect in the authentication page and if authenticated, you will be in the same page. The IAR is not yet implemented. Can generate only in PDF format in both PO and PR generation.
 
 ##
